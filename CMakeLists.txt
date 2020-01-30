@@ -18,6 +18,7 @@ else()
 	include(${QT_USE_FILE})
 endif()
 
+find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(OGRE_OV OGRE OGRE-Overlay)
@@ -74,6 +75,7 @@ endif()
 # Other includes
 include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
+  ${OpenCV_INCLUDE_DIR}
   ${OGRE_OV_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   src
@@ -82,6 +84,7 @@ include_directories(
 # Other libraries
 link_libraries(
   ${QT_LIBRARIES}
+  ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
 )
 
