@@ -1,24 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(rviz_satellite)
 
-set(DISTRO $ENV{ROS_DISTRO})
-message(STATUS "Distribution: " ${DISTRO})
-
-set(DEFAULT_BUILD_QT5 OFF)
-if(${DISTRO} STREQUAL "kinetic")
-    set(DEFAULT_BUILD_QT5 ON)
-endif()
-
-option(UseQt5 "Build w/ QT version 5" ${DEFAULT_BUILD_QT5})
-
-if (UseQt5)
-	find_package(Qt5 COMPONENTS Core Gui Network Concurrent REQUIRED)
-else()
-	find_package(Qt4 COMPONENTS QtCore QtGui QtNetwork REQUIRED)
-	include(${QT_USE_FILE})
-endif()
-
-find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(OGRE_OV OGRE OGRE-Overlay)
@@ -39,18 +21,32 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_package(CATKIN_DEPENDS nav_msgs sensor_msgs)
 
+if (rviz_QT_VERSION VERSION_LESS "5")
+	find_package(Qt4 COMPONENTS QtCore QtGui QtNetwork REQUIRED)
+	include(${QT_USE_FILE})
+else()
+	find_package(Qt5 COMPONENTS Core Gui Network Concurrent REQUIRED)
+endif()
+
 set(${PROJECT_NAME}_SOURCES
   src/aerialmap_display.cpp
-  src/tileloader.cpp
+  src/OgreTile.cpp
+  src/TileId.cpp
 )
 
 set(${PROJECT_NAME}_HEADERS
   src/aerialmap_display.h
-  src/tileloader.h
+  src/detail/TileDownloader.h
 )
 
 # invoke MOC and UI/ include Qt headers/ link Qt libraries
-if (UseQt5)
+if (rviz_QT_VERSION VERSION_LESS "5")
+	qt4_wrap_cpp(${PROJECT_NAME}_MOCSrcs ${${PROJECT_NAME}_HEADERS})
+	include_directories(${Qt4_INCLUDE_DIR})
+	link_libraries(
+  		${QT_LIBRARIES}
+		)
+else()
 	qt5_wrap_cpp(${PROJECT_NAME}_MOCSrcs ${${PROJECT_NAME}_HEADERS})
 	include_directories(
 		${Qt5Core_INCLUDE_DIRS}
@@ -64,18 +60,11 @@ if (UseQt5)
 		${Qt5Network_LIBRARIES}
 		${Qt5Concurrent_LIBRARIES}
 		)
-else()
-	qt4_wrap_cpp(${PROJECT_NAME}_MOCSrcs ${${PROJECT_NAME}_HEADERS})
-	include_directories(${Qt4_INCLUDE_DIR})
-	link_libraries(
-  		${QT_LIBRARIES}
-		)
 endif()
 
 # Other includes
 include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
-  ${OpenCV_INCLUDE_DIR}
   ${OGRE_OV_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
   src
@@ -84,11 +73,11 @@ include_directories(
 # Other libraries
 link_libraries(
   ${QT_LIBRARIES}
-  ${OpenCV_LIBRARIES}
   ${catkin_LIBRARIES}
 )
 
-add_definitions("-Wall -Wunused -std=c++11")
+# set compiler options and inject version of software (see tileloader.cpp)
+add_definitions("-Wall -Wunused -std=c++11 -DRVIZ_SATELLITE_VERSION=\"\\\"${rviz_satellite_VERSION}\\\"\"")
 
 set(PROJECT_SOURCE_FILES
   ${${PROJECT_NAME}_SOURCES}
@@ -106,5 +95,3 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 install(FILES plugin_description.xml DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
-
-
